@@ -1,9 +1,13 @@
-use crate::types::GetAuthorFeedParams;
+use crate::{
+    types::{CreatePostParams, GetAuthorFeedParams, ListNotificationsParams},
+    utils::get_post,
+};
 use bsky_sdk::{
     BskyAgent,
     api::{
         app::bsky,
-        types::{LimitedNonZeroU8, string::Datetime},
+        com::atproto,
+        types::{LimitedNonZeroU8, TryFromUnknown, string::Datetime},
     },
     rich_text::RichText,
 };
@@ -17,7 +21,7 @@ use rmcp::{
 
 #[derive(Clone)]
 pub struct BskyService {
-    pub(crate) agent: BskyAgent,
+    agent: BskyAgent,
 }
 
 impl BskyService {
@@ -97,12 +101,45 @@ impl BskyService {
             output.data.feed,
         )?]))
     }
+    #[tool(description = "Enumerate notifications for the requesting account")]
+    async fn list_notifications(
+        &self,
+        #[tool(aggr)] ListNotificationsParams { limit }: ListNotificationsParams,
+    ) -> Result<CallToolResult, Error> {
+        let limit = Some(LimitedNonZeroU8::<100u8>::try_from(limit).map_err(|e| {
+            Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
+        })?);
+        let output = self
+            .agent
+            .api
+            .app
+            .bsky
+            .notification
+            .list_notifications(
+                bsky::notification::list_notifications::ParametersData {
+                    cursor: None,
+                    limit,
+                    priority: None,
+                    reasons: None,
+                    seen_at: None,
+                }
+                .into(),
+            )
+            .await
+            .map_err(|e| {
+                Error::internal_error(
+                    "failed to list notifications",
+                    Some(Value::String(e.to_string())),
+                )
+            })?;
+        Ok(CallToolResult::success(vec![Content::json(
+            output.data.notifications,
+        )?]))
+    }
     #[tool(description = "Post a new message")]
     async fn create_post(
         &self,
-        #[tool(param)]
-        #[schemars(description = "Text content of the post")]
-        text: String,
+        #[tool(aggr)] CreatePostParams { text, reply }: CreatePostParams,
     ) -> Result<CallToolResult, Error> {
         let rt = RichText::new_with_detect_facets(text).await.map_err(|e| {
             Error::internal_error(
@@ -110,6 +147,40 @@ impl BskyService {
                 Some(Value::String(e.to_string())),
             )
         })?;
+        let reply = if reply.is_empty() {
+            None
+        } else {
+            let output = get_post(&self.agent, &reply).await.map_err(|e| {
+                Error::internal_error("failed to get post", Some(Value::String(e.to_string())))
+            })?;
+            let strong_ref =
+                atproto::repo::strong_ref::Main::from(atproto::repo::strong_ref::MainData {
+                    cid: output
+                        .data
+                        .cid
+                        .ok_or(Error::internal_error("failed to get cid", None))?,
+                    uri: output.data.uri,
+                });
+            let record =
+                bsky::feed::post::Record::try_from_unknown(output.data.value).map_err(|e| {
+                    Error::internal_error(
+                        "failed to convert record",
+                        Some(Value::String(e.to_string())),
+                    )
+                })?;
+            let root = if let Some(reply) = &record.reply {
+                reply.root.clone()
+            } else {
+                strong_ref.clone()
+            };
+            Some(
+                bsky::feed::post::ReplyRefData {
+                    parent: strong_ref,
+                    root,
+                }
+                .into(),
+            )
+        };
         let post = self
             .agent
             .create_record(bsky::feed::post::RecordData {
@@ -119,7 +190,7 @@ impl BskyService {
                 facets: rt.facets,
                 labels: None,
                 langs: None,
-                reply: None,
+                reply,
                 tags: None,
                 text: rt.text,
             })
