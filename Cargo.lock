@@ -187,10 +187,8 @@ name = "bsky-rmcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "atrium-api",
  "bsky-sdk",
  "rmcp",
- "schemars",
  "serde",
  "tokio",
 ]
