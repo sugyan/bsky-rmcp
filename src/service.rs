@@ -1,5 +1,5 @@
 use crate::{
-    types::{CreatePostParams, GetAuthorFeedParams, ListNotificationsParams},
+    types::{CreatePostParams, GetAuthorFeedParams, GetPostThreadParams, ListNotificationsParams},
     utils::get_post,
 };
 use bsky_sdk::{
@@ -7,7 +7,7 @@ use bsky_sdk::{
     api::{
         app::bsky,
         com::atproto,
-        types::{LimitedNonZeroU8, TryFromUnknown, string::Datetime},
+        types::{LimitedNonZeroU8, LimitedU16, TryFromUnknown, string::Datetime},
     },
     rich_text::RichText,
 };
@@ -100,6 +100,47 @@ impl BskyService {
         Ok(CallToolResult::success(vec![Content::json(
             output.data.feed,
         )?]))
+    }
+    #[tool(description = "Get posts in a thread")]
+    async fn get_post_thread(
+        &self,
+        #[tool(aggr)] GetPostThreadParams {
+            uri,
+            depth,
+            parent_height,
+        }: GetPostThreadParams,
+    ) -> Result<CallToolResult, Error> {
+        let depth = Some(LimitedU16::<1000u16>::try_from(depth).map_err(|e| {
+            Error::internal_error("failed to parse depth", Some(Value::String(e.to_string())))
+        })?);
+        let parent_height = Some(LimitedU16::<1000u16>::try_from(parent_height).map_err(|e| {
+            Error::internal_error(
+                "failed to parse parent height",
+                Some(Value::String(e.to_string())),
+            )
+        })?);
+        let output = self
+            .agent
+            .api
+            .app
+            .bsky
+            .feed
+            .get_post_thread(
+                bsky::feed::get_post_thread::ParametersData {
+                    depth,
+                    parent_height,
+                    uri,
+                }
+                .into(),
+            )
+            .await
+            .map_err(|e| {
+                Error::internal_error(
+                    "failed to get post thread",
+                    Some(Value::String(e.to_string())),
+                )
+            })?;
+        Ok(CallToolResult::success(vec![Content::json(output.data)?]))
     }
     #[tool(description = "Enumerate notifications for the requesting account")]
     async fn list_notifications(

@@ -14,6 +14,30 @@ pub struct GetAuthorFeedParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct GetPostThreadParams {
+    #[schemars(description = "Reference (AT-URI) to post record.")]
+    pub uri: String,
+    #[schemars(
+        description = "How many levels of reply depth should be included in response",
+        default = "default_depth"
+    )]
+    pub depth: u16,
+    #[schemars(
+        description = "How many levels of parent (and grandparent, etc) post to include",
+        default = "default_parent_height"
+    )]
+    pub parent_height: u16,
+}
+
+fn default_depth() -> u8 {
+    1
+}
+
+fn default_parent_height() -> u8 {
+    10
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum ReasonEnum {
     Like,
