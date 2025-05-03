@@ -104,7 +104,7 @@ impl BskyService {
     #[tool(description = "Enumerate notifications for the requesting account")]
     async fn list_notifications(
         &self,
-        #[tool(aggr)] ListNotificationsParams { limit }: ListNotificationsParams,
+        #[tool(aggr)] ListNotificationsParams { limit, reasons }: ListNotificationsParams,
     ) -> Result<CallToolResult, Error> {
         let limit = Some(LimitedNonZeroU8::<100u8>::try_from(limit).map_err(|e| {
             Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
@@ -120,7 +120,7 @@ impl BskyService {
                     cursor: None,
                     limit,
                     priority: None,
-                    reasons: None,
+                    reasons: Some(reasons.iter().map(|r| r.to_string()).collect()),
                     seen_at: None,
                 }
                 .into(),
