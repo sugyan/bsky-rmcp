@@ -12,10 +12,15 @@ use bsky_sdk::{
     rich_text::RichText,
 };
 use rmcp::{
-    Error, ServerHandler,
-    model::{CallToolResult, Content, ServerCapabilities, ServerInfo},
+    Error, RoleServer, ServerHandler,
+    model::{
+        CallToolResult, Content, GetPromptRequestParam, GetPromptResult, ListPromptsResult,
+        PaginatedRequestParam, Prompt, PromptMessage, PromptMessageRole, ServerCapabilities,
+        ServerInfo,
+    },
     schemars,
     serde_json::Value,
+    service::RequestContext,
     tool,
 };
 
@@ -248,10 +253,75 @@ impl BskyService {
 
 #[tool(tool_box)]
 impl ServerHandler for BskyService {
+    async fn get_prompt(
+        &self,
+        request: GetPromptRequestParam,
+        _: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResult, Error> {
+        match request.name.as_ref() {
+            "get_self_feed" => Ok(GetPromptResult {
+                description: None,
+                messages: vec![
+                    PromptMessage::new_text(
+                        PromptMessageRole::User,
+                        "I want to view my own recent posts.",
+                    ),
+                    PromptMessage::new_text(
+                        PromptMessageRole::Assistant,
+                        "First, call the `get_did` tool to retrieve the current user's DID. Then, call the `get_author_feed` tool using that DID as the `actor` parameter. If the user specifies a number of posts to retrieve (e.g., 'last 3 posts'), include that as the `limit` parameter. Otherwise, omit `limit`.",
+                    ),
+                ],
+            }),
+            "get_unreplied_replies" => Ok(GetPromptResult {
+                description: None,
+                messages: vec![
+                    PromptMessage::new_text(
+                        PromptMessageRole::User,
+                        r#"Please show me replies that I haven't responded to yet."#,
+                    ),
+                    PromptMessage::new_text(
+                        PromptMessageRole::Assistant,
+                        r#"To find replies the user hasn't responded to:
+
+1. Call `get_did` to retrieve the current user's DID.
+2. Call `list_notifications` with the `reason` parameter set to `["reply"]`. If a `limit` is provided, include it as a parameter. Otherwise, omit it.
+3. For each returned reply notification, call `get_post_thread` with `depth: 1` and `parent_height: 0`.
+4. In each thread, examine the `replies` array. If none of the replies are authored by the user's DID, consider it as not responded.
+5. Return the reply notifications where the user has not responded."#,
+                    ),
+                ],
+            }),
+            _ => Err(Error::invalid_params("prompt not found", None)),
+        }
+    }
+    async fn list_prompts(
+        &self,
+        _: Option<PaginatedRequestParam>,
+        _: RequestContext<RoleServer>,
+    ) -> Result<ListPromptsResult, Error> {
+        Ok(ListPromptsResult {
+            next_cursor: None,
+            prompts: vec![
+                Prompt::new(
+                    "get_self_feed",
+                    Some("Get the self feed of the current user"),
+                    None,
+                ),
+                Prompt::new(
+                    "get_unreplied_replies",
+                    Some("Retrieve recent replies that the user has not yet responded to"),
+                    None,
+                ),
+            ],
+        })
+    }
     fn get_info(&self) -> ServerInfo {
         ServerInfo {
             instructions: Some("bsky service".into()),
-            capabilities: ServerCapabilities::builder().enable_tools().build(),
+            capabilities: ServerCapabilities::builder()
+                .enable_tools()
+                .enable_prompts()
+                .build(),
             ..Default::default()
         }
     }
