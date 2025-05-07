@@ -32,7 +32,7 @@ impl BskyService {
 
 #[tool(tool_box)]
 impl BskyService {
-    #[tool(description = "Get the current user DID")]
+    #[tool(description = "Get the current user DID.")]
     async fn get_did(&self) -> Result<CallToolResult, Error> {
         Ok(if let Some(did) = self.agent.did().await {
             CallToolResult::success(vec![Content::text(did.as_ref())])
@@ -40,7 +40,7 @@ impl BskyService {
             CallToolResult::error(vec![Content::text("failed to get did")])
         })
     }
-    #[tool(description = "Get detailed profile view of an actor")]
+    #[tool(description = "Get detailed profile view of an actor.")]
     async fn get_profile(
         &self,
         #[tool(param)]
@@ -63,7 +63,9 @@ impl BskyService {
             })?;
         Ok(CallToolResult::success(vec![Content::json(profile)?]))
     }
-    #[tool(description = "Get a view of an actor's 'author feed' (post and reposts by the author)")]
+    #[tool(
+        description = "Get a view of an actor's 'author feed' (post and reposts by the author)."
+    )]
     async fn get_author_feed(
         &self,
         #[tool(aggr)] GetAuthorFeedParams { actor, limit }: GetAuthorFeedParams,
@@ -101,7 +103,7 @@ impl BskyService {
             output.data.feed,
         )?]))
     }
-    #[tool(description = "Get posts in a thread")]
+    #[tool(description = "Get posts in a thread.")]
     async fn get_post_thread(
         &self,
         #[tool(aggr)] GetPostThreadParams {
@@ -142,7 +144,7 @@ impl BskyService {
             })?;
         Ok(CallToolResult::success(vec![Content::json(output.data)?]))
     }
-    #[tool(description = "Enumerate notifications for the requesting account")]
+    #[tool(description = "Enumerate notifications for the requesting account.")]
     async fn list_notifications(
         &self,
         #[tool(aggr)] ListNotificationsParams { limit, reasons }: ListNotificationsParams,
@@ -177,7 +179,9 @@ impl BskyService {
             output.data.notifications,
         )?]))
     }
-    #[tool(description = "Post a new message")]
+    #[tool(
+        description = "Create a regular or reply post. Use `text` for content. Set `reply` to a post URI if replying, or to '' for a regular post."
+    )]
     async fn create_post(
         &self,
         #[tool(aggr)] CreatePostParams { text, reply }: CreatePostParams,

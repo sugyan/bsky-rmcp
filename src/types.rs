@@ -4,10 +4,10 @@ use std::fmt;
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetAuthorFeedParams {
-    #[schemars(description = "Handle or DID of account to fetch author feed of")]
+    #[schemars(description = "Handle or DID of account to fetch author feed of.")]
     pub actor: String,
     #[schemars(
-        description = "Limit for the number of posts to fetch",
+        description = "Limit for the number of posts to fetch.",
         default = "default_limit"
     )]
     pub limit: u8,
@@ -18,12 +18,12 @@ pub struct GetPostThreadParams {
     #[schemars(description = "Reference (AT-URI) to post record.")]
     pub uri: String,
     #[schemars(
-        description = "How many levels of reply depth should be included in response",
+        description = "How many levels of reply depth should be included in response.",
         default = "default_depth"
     )]
     pub depth: u16,
     #[schemars(
-        description = "How many levels of parent (and grandparent, etc) post to include",
+        description = "How many levels of parent (and grandparent, etc) post to include.",
         default = "default_parent_height"
     )]
     pub parent_height: u16,
@@ -71,11 +71,11 @@ impl fmt::Display for ReasonEnum {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListNotificationsParams {
     #[schemars(
-        description = "Limit for the number of posts to fetch",
+        description = "Limit for the number of posts to fetch.",
         default = "default_limit"
     )]
     pub limit: u8,
-    #[schemars(description = "Notification reasons to include in response")]
+    #[schemars(description = "Notification reasons to include in response.")]
     pub reasons: Vec<ReasonEnum>,
 }
 
@@ -85,8 +85,11 @@ fn default_limit() -> u8 {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreatePostParams {
-    #[schemars(description = "Text content of the post")]
+    #[schemars(description = "Text content of the post.")]
     pub text: String,
-    #[schemars(description = "Optional uri target for reply", default = "String::new")]
+    #[schemars(
+        description = "Optional URI of the post being replied to. Use an empty string ('') if not replying.",
+        default = "String::new"
+    )]
     pub reply: String,
 }
