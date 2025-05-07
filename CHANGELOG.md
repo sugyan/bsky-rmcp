@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.6](https://github.com/sugyan/bsky-rmcp/compare/v0.0.5...v0.0.6) - 2025-05-07
+- Use tracing by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/7
+- fix: update descriptions in tool attributes for consistency and clarity by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/9
+
 ## [v0.0.5](https://github.com/sugyan/bsky-rmcp/compare/v0.0.4...v0.0.5) - 2025-05-05
 - Add prompts by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/5
 
