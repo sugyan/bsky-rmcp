@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.7](https://github.com/sugyan/bsky-rmcp/compare/v0.0.6...v0.0.7) - 2025-05-08
+- feat: add `get_unreplied_mentions` by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/10
+
 ## [v0.0.6](https://github.com/sugyan/bsky-rmcp/compare/v0.0.5...v0.0.6) - 2025-05-07
 - Use tracing by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/7
 - fix: update descriptions in tool attributes for consistency and clarity by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/9
