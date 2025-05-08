@@ -1,5 +1,10 @@
+use std::collections::HashSet;
+
 use crate::{
-    types::{CreatePostParams, GetAuthorFeedParams, GetPostThreadParams, ListNotificationsParams},
+    types::{
+        CreatePostParams, GetAuthorFeedParams, GetPostThreadParams, ListNotificationsParams,
+        ReasonEnum, default_limit,
+    },
     utils::get_post,
 };
 use bsky_sdk::{
@@ -7,7 +12,7 @@ use bsky_sdk::{
     api::{
         app::bsky,
         com::atproto,
-        types::{LimitedNonZeroU8, LimitedU16, TryFromUnknown, string::Datetime},
+        types::{LimitedNonZeroU8, LimitedU16, TryFromUnknown, Union, string::Datetime},
     },
     rich_text::RichText,
 };
@@ -73,14 +78,16 @@ impl BskyService {
     )]
     async fn get_author_feed(
         &self,
-        #[tool(aggr)] GetAuthorFeedParams { actor, limit }: GetAuthorFeedParams,
+        #[tool(aggr)] params: GetAuthorFeedParams,
     ) -> Result<CallToolResult, Error> {
-        let actor = actor.parse().map_err(|e: &str| {
+        let actor = params.actor.parse().map_err(|e: &str| {
             Error::internal_error("failed to parse actor", Some(Value::String(e.into())))
         })?;
-        let limit = Some(LimitedNonZeroU8::<100u8>::try_from(limit).map_err(|e| {
-            Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
-        })?);
+        let limit = Some(
+            LimitedNonZeroU8::<100u8>::try_from(params.limit).map_err(|e| {
+                Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
+            })?,
+        );
         let output = self
             .agent
             .api
@@ -111,21 +118,19 @@ impl BskyService {
     #[tool(description = "Get posts in a thread.")]
     async fn get_post_thread(
         &self,
-        #[tool(aggr)] GetPostThreadParams {
-            uri,
-            depth,
-            parent_height,
-        }: GetPostThreadParams,
+        #[tool(aggr)] params: GetPostThreadParams,
     ) -> Result<CallToolResult, Error> {
-        let depth = Some(LimitedU16::<1000u16>::try_from(depth).map_err(|e| {
+        let depth = Some(LimitedU16::<1000u16>::try_from(params.depth).map_err(|e| {
             Error::internal_error("failed to parse depth", Some(Value::String(e.to_string())))
         })?);
-        let parent_height = Some(LimitedU16::<1000u16>::try_from(parent_height).map_err(|e| {
-            Error::internal_error(
-                "failed to parse parent height",
-                Some(Value::String(e.to_string())),
-            )
-        })?);
+        let parent_height = Some(
+            LimitedU16::<1000u16>::try_from(params.parent_height).map_err(|e| {
+                Error::internal_error(
+                    "failed to parse parent height",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
+        );
         let output = self
             .agent
             .api
@@ -136,7 +141,7 @@ impl BskyService {
                 bsky::feed::get_post_thread::ParametersData {
                     depth,
                     parent_height,
-                    uri,
+                    uri: params.uri,
                 }
                 .into(),
             )
@@ -152,11 +157,116 @@ impl BskyService {
     #[tool(description = "Enumerate notifications for the requesting account.")]
     async fn list_notifications(
         &self,
-        #[tool(aggr)] ListNotificationsParams { limit, reasons }: ListNotificationsParams,
+        #[tool(aggr)] params: ListNotificationsParams,
     ) -> Result<CallToolResult, Error> {
-        let limit = Some(LimitedNonZeroU8::<100u8>::try_from(limit).map_err(|e| {
-            Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
-        })?);
+        Ok(CallToolResult::success(vec![Content::json(
+            self._list_notifications(params).await?,
+        )?]))
+    }
+    #[tool(
+        description = "Get the reply or mention notifications that have not been responded to by the user."
+    )]
+    async fn get_unreplied_mentions(
+        &self,
+        #[tool(param)]
+        #[schemars(
+            description = "Maximum number of notifications to retrieve.",
+            default = "default_limit"
+        )]
+        max_num: u8,
+    ) -> Result<CallToolResult, Error> {
+        // Get the recent notifications that are replies or mentions
+        let notifications = self
+            ._list_notifications(ListNotificationsParams {
+                limit: max_num,
+                reasons: vec![ReasonEnum::Mention, ReasonEnum::Reply],
+            })
+            .await?;
+        // Get the post thread for each notification concurrently
+        let mut handles = Vec::with_capacity(notifications.len());
+        for notification in notifications.iter() {
+            let agent = self.agent.clone();
+            let uri = notification.uri.clone();
+            handles.push(tokio::spawn(async move {
+                agent
+                    .api
+                    .app
+                    .bsky
+                    .feed
+                    .get_post_thread(
+                        bsky::feed::get_post_thread::ParametersData {
+                            depth: 1.try_into().ok(),
+                            parent_height: Some(LimitedU16::MIN),
+                            uri,
+                        }
+                        .into(),
+                    )
+                    .await
+            }));
+        }
+        let did = self
+            .agent
+            .did()
+            .await
+            .ok_or(Error::internal_error("failed to get did", None))?;
+        // Collect the uris of posts that have been replied from the current user
+        let mut replied = HashSet::new();
+        for handle in handles {
+            // Wait for the task to finish and get the result
+            let output = handle
+                .await
+                .map_err(|e| {
+                    Error::internal_error(
+                        "failed to await task",
+                        Some(Value::String(e.to_string())),
+                    )
+                })?
+                .map_err(|e| {
+                    Error::internal_error(
+                        "failed to get post thread",
+                        Some(Value::String(e.to_string())),
+                    )
+                })?;
+            // Check if the thread contains a reply from the user
+            if let Union::Refs(
+                bsky::feed::get_post_thread::OutputThreadRefs::AppBskyFeedDefsThreadViewPost(
+                    thread_view_post,
+                ),
+            ) = &output.thread
+            {
+                if let Some(replies) = &thread_view_post.replies {
+                    if replies.iter().any(|reply| {
+                        if let Union::Refs(
+                            bsky::feed::defs::ThreadViewPostRepliesItem::ThreadViewPost(view_post),
+                        ) = reply
+                        {
+                            view_post.post.author.did == did
+                        } else {
+                            false
+                        }
+                    }) {
+                        replied.insert(thread_view_post.post.uri.clone());
+                    }
+                }
+            }
+        }
+        // Filter the notifications to only include those that have not been replied to
+        Ok(CallToolResult::success(vec![Content::json(
+            notifications
+                .iter()
+                .filter(|notification| !replied.contains(&notification.uri))
+                .collect::<Vec<_>>(),
+        )?]))
+    }
+    async fn _list_notifications(
+        &self,
+        params: ListNotificationsParams,
+    ) -> Result<Vec<bsky::notification::list_notifications::Notification>, Error> {
+        let limit = Some(
+            LimitedNonZeroU8::<100u8>::try_from(params.limit).map_err(|e| {
+                Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
+            })?,
+        );
         let output = self
             .agent
             .api
@@ -168,7 +278,7 @@ impl BskyService {
                     cursor: None,
                     limit,
                     priority: None,
-                    reasons: Some(reasons.iter().map(|r| r.to_string()).collect()),
+                    reasons: Some(params.reasons.iter().map(|r| r.to_string()).collect()),
                     seen_at: None,
                 }
                 .into(),
@@ -180,27 +290,27 @@ impl BskyService {
                     Some(Value::String(e.to_string())),
                 )
             })?;
-        Ok(CallToolResult::success(vec![Content::json(
-            output.data.notifications,
-        )?]))
+        Ok(output.data.notifications)
     }
     #[tool(
         description = "Create a regular or reply post. Use `text` for content. Set `reply` to a post URI if replying, or to '' for a regular post."
     )]
     async fn create_post(
         &self,
-        #[tool(aggr)] CreatePostParams { text, reply }: CreatePostParams,
+        #[tool(aggr)] params: CreatePostParams,
     ) -> Result<CallToolResult, Error> {
-        let rt = RichText::new_with_detect_facets(text).await.map_err(|e| {
-            Error::internal_error(
-                "failed to create rich text",
-                Some(Value::String(e.to_string())),
-            )
-        })?;
-        let reply = if reply.is_empty() {
+        let rt = RichText::new_with_detect_facets(params.text)
+            .await
+            .map_err(|e| {
+                Error::internal_error(
+                    "failed to create rich text",
+                    Some(Value::String(e.to_string())),
+                )
+            })?;
+        let reply = if params.reply.is_empty() {
             None
         } else {
-            let output = get_post(&self.agent, &reply).await.map_err(|e| {
+            let output = get_post(&self.agent, &params.reply).await.map_err(|e| {
                 Error::internal_error("failed to get post", Some(Value::String(e.to_string())))
             })?;
             let strong_ref =
@@ -276,25 +386,6 @@ impl ServerHandler for BskyService {
                     ),
                 ],
             }),
-            "get_unreplied_replies" => Ok(GetPromptResult {
-                description: None,
-                messages: vec![
-                    PromptMessage::new_text(
-                        PromptMessageRole::User,
-                        r#"Please show me replies that I haven't responded to yet."#,
-                    ),
-                    PromptMessage::new_text(
-                        PromptMessageRole::Assistant,
-                        r#"To find replies the user hasn't responded to:
-
-1. Call `get_did` to retrieve the current user's DID.
-2. Call `list_notifications` with the `reason` parameter set to `["reply"]`. If a `limit` is provided, include it as a parameter. Otherwise, omit it.
-3. For each returned reply notification, call `get_post_thread` with `depth: 1` and `parent_height: 0`.
-4. In each thread, examine the `replies` array. If none of the replies are authored by the user's DID, consider it as not responded.
-5. Return the reply notifications where the user has not responded."#,
-                    ),
-                ],
-            }),
             _ => Err(Error::invalid_params("prompt not found", None)),
         }
     }
@@ -305,18 +396,11 @@ impl ServerHandler for BskyService {
     ) -> Result<ListPromptsResult, Error> {
         Ok(ListPromptsResult {
             next_cursor: None,
-            prompts: vec![
-                Prompt::new(
-                    "get_self_feed",
-                    Some("Get the self feed of the current user"),
-                    None,
-                ),
-                Prompt::new(
-                    "get_unreplied_replies",
-                    Some("Retrieve recent replies that the user has not yet responded to"),
-                    None,
-                ),
-            ],
+            prompts: vec![Prompt::new(
+                "get_self_feed",
+                Some("Get the self feed of the current user"),
+                None,
+            )],
         })
     }
     fn get_info(&self) -> ServerInfo {
