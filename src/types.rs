@@ -71,7 +71,7 @@ impl fmt::Display for ReasonEnum {
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListNotificationsParams {
     #[schemars(
-        description = "Limit for the number of posts to fetch.",
+        description = "Limit for the number of notifications to fetch.",
         default = "default_limit"
     )]
     pub limit: u8,
@@ -79,7 +79,7 @@ pub struct ListNotificationsParams {
     pub reasons: Vec<ReasonEnum>,
 }
 
-fn default_limit() -> u8 {
+pub fn default_limit() -> u8 {
     10
 }
 
