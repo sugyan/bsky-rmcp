@@ -188,6 +188,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bsky-sdk",
+ "chrono",
  "rmcp",
  "serde",
  "tokio",

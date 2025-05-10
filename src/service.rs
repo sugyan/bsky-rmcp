@@ -1,11 +1,9 @@
-use std::collections::HashSet;
-
 use crate::{
     types::{
         CreatePostParams, GetAuthorFeedParams, GetPostThreadParams, ListNotificationsParams,
         ReasonEnum, default_limit,
     },
-    utils::get_post,
+    utils::{convert_datetime, get_post},
 };
 use bsky_sdk::{
     BskyAgent,
@@ -28,6 +26,7 @@ use rmcp::{
     service::RequestContext,
     tool,
 };
+use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct BskyService {
@@ -71,7 +70,14 @@ impl BskyService {
             .map_err(|e| {
                 Error::internal_error("failed to get profile", Some(Value::String(e.to_string())))
             })?;
-        Ok(CallToolResult::success(vec![Content::json(profile)?]))
+        Ok(CallToolResult::success(vec![Content::json(
+            convert_datetime(profile).map_err(|e| {
+                Error::internal_error(
+                    "failed to convert datetime",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
+        )?]))
     }
     #[tool(
         description = "Get a view of an actor's 'author feed' (post and reposts by the author)."
@@ -112,7 +118,12 @@ impl BskyService {
                 )
             })?;
         Ok(CallToolResult::success(vec![Content::json(
-            output.data.feed,
+            convert_datetime(output.data.feed).map_err(|e| {
+                Error::internal_error(
+                    "failed to convert datetime",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
         )?]))
     }
     #[tool(description = "Get posts in a thread.")]
@@ -152,7 +163,14 @@ impl BskyService {
                     Some(Value::String(e.to_string())),
                 )
             })?;
-        Ok(CallToolResult::success(vec![Content::json(output.data)?]))
+        Ok(CallToolResult::success(vec![Content::json(
+            convert_datetime(output.data).map_err(|e| {
+                Error::internal_error(
+                    "failed to convert datetime",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
+        )?]))
     }
     #[tool(description = "Enumerate notifications for the requesting account.")]
     async fn list_notifications(
@@ -160,7 +178,12 @@ impl BskyService {
         #[tool(aggr)] params: ListNotificationsParams,
     ) -> Result<CallToolResult, Error> {
         Ok(CallToolResult::success(vec![Content::json(
-            self._list_notifications(params).await?,
+            convert_datetime(self._list_notifications(params).await?).map_err(|e| {
+                Error::internal_error(
+                    "failed to convert datetime",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
         )?]))
     }
     #[tool(
@@ -252,10 +275,18 @@ impl BskyService {
         }
         // Filter the notifications to only include those that have not been replied to
         Ok(CallToolResult::success(vec![Content::json(
-            notifications
-                .iter()
-                .filter(|notification| !replied.contains(&notification.uri))
-                .collect::<Vec<_>>(),
+            convert_datetime(
+                notifications
+                    .iter()
+                    .filter(|notification| !replied.contains(&notification.uri))
+                    .collect::<Vec<_>>(),
+            )
+            .map_err(|e| {
+                Error::internal_error(
+                    "failed to convert datetime",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
         )?]))
     }
     async fn _list_notifications(
