@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.8](https://github.com/sugyan/bsky-rmcp/compare/v0.0.7...v0.0.8) - 2025-05-10
+- feat: Add datetime conversion logic and enhance service/utils functionality by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/12
+
 ## [v0.0.7](https://github.com/sugyan/bsky-rmcp/compare/v0.0.6...v0.0.7) - 2025-05-08
 - feat: add `get_unreplied_mentions` by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/10
 
