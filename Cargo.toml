@@ -6,6 +6,7 @@ edition = "2024"
 [dependencies]
 anyhow = "1.0.98"
 bsky-sdk = "0.1.19"
+chrono = "0.4.41"
 rmcp = "0.1"
 serde = { version = "1.0.219", features = ["derive"] }
 tokio = { version = "1.44.2", features = ["io-std", "rt-multi-thread"] }
