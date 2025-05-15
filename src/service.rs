@@ -1,7 +1,7 @@
 use crate::{
     types::{
-        CreatePostParams, GetAuthorFeedParams, GetPostThreadParams, ListNotificationsParams,
-        ReasonEnum, default_limit,
+        CreatePostParams, DEFAULT_DEPTH, DEFAULT_LIMIT, DEFAULT_PARENT_HEIGHT, GetAuthorFeedParams,
+        GetPostThreadParams, ListNotificationsParams, ReasonEnum,
     },
     utils::{convert_datetime, get_post},
 };
@@ -10,7 +10,7 @@ use bsky_sdk::{
     api::{
         app::bsky,
         com::atproto,
-        types::{LimitedNonZeroU8, LimitedU16, TryFromUnknown, Union, string::Datetime},
+        types::{LimitedU16, TryFromUnknown, Union, string::Datetime},
     },
     rich_text::RichText,
 };
@@ -90,9 +90,13 @@ impl BskyService {
             Error::internal_error("failed to parse actor", Some(Value::String(e.into())))
         })?;
         let limit = Some(
-            LimitedNonZeroU8::<100u8>::try_from(params.limit).map_err(|e| {
-                Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
-            })?,
+            params
+                .limit
+                .unwrap_or(DEFAULT_LIMIT)
+                .try_into()
+                .map_err(|e| {
+                    Error::internal_error("failed to parse limit", Some(Value::String(e)))
+                })?,
         );
         let output = self
             .agent
@@ -131,16 +135,23 @@ impl BskyService {
         &self,
         #[tool(aggr)] params: GetPostThreadParams,
     ) -> Result<CallToolResult, Error> {
-        let depth = Some(LimitedU16::<1000u16>::try_from(params.depth).map_err(|e| {
-            Error::internal_error("failed to parse depth", Some(Value::String(e.to_string())))
-        })?);
+        let depth = Some(
+            params
+                .depth
+                .unwrap_or(DEFAULT_DEPTH)
+                .try_into()
+                .map_err(|e| {
+                    Error::internal_error("failed to parse depth", Some(Value::String(e)))
+                })?,
+        );
         let parent_height = Some(
-            LimitedU16::<1000u16>::try_from(params.parent_height).map_err(|e| {
-                Error::internal_error(
-                    "failed to parse parent height",
-                    Some(Value::String(e.to_string())),
-                )
-            })?,
+            params
+                .parent_height
+                .unwrap_or(DEFAULT_PARENT_HEIGHT)
+                .try_into()
+                .map_err(|e| {
+                    Error::internal_error("failed to parse parent height", Some(Value::String(e)))
+                })?,
         );
         let output = self
             .agent
@@ -192,11 +203,8 @@ impl BskyService {
     async fn get_unreplied_mentions(
         &self,
         #[tool(param)]
-        #[schemars(
-            description = "Maximum number of notifications to retrieve.",
-            default = "default_limit"
-        )]
-        max_num: u8,
+        #[schemars(description = "Maximum number of notifications to retrieve.")]
+        max_num: Option<u8>,
     ) -> Result<CallToolResult, Error> {
         // Get the recent notifications that are replies or mentions
         let notifications = self
@@ -294,9 +302,13 @@ impl BskyService {
         params: ListNotificationsParams,
     ) -> Result<Vec<bsky::notification::list_notifications::Notification>, Error> {
         let limit = Some(
-            LimitedNonZeroU8::<100u8>::try_from(params.limit).map_err(|e| {
-                Error::internal_error("failed to parse limit", Some(Value::String(e.to_string())))
-            })?,
+            params
+                .limit
+                .unwrap_or(DEFAULT_LIMIT)
+                .try_into()
+                .map_err(|e| {
+                    Error::internal_error("failed to parse limit", Some(Value::String(e)))
+                })?,
         );
         let output = self
             .agent
