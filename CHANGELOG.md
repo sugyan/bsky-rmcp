@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.10](https://github.com/sugyan/bsky-rmcp/compare/v0.0.9...v0.0.10) - 2025-05-15
+- feat: Update parameters to use Option types by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/16
+
 ## [v0.0.9](https://github.com/sugyan/bsky-rmcp/compare/v0.0.8...v0.0.9) - 2025-05-15
 - feat: Update post creation parameters to use Option for reply URI by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/15
 
