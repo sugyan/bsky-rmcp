@@ -2,39 +2,26 @@ use rmcp::schemars::{self, JsonSchema};
 use serde::Deserialize;
 use std::fmt;
 
+pub const DEFAULT_LIMIT: u8 = 10;
+pub const DEFAULT_DEPTH: u16 = 1;
+pub const DEFAULT_PARENT_HEIGHT: u16 = 10;
+
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetAuthorFeedParams {
     #[schemars(description = "Handle or DID of account to fetch author feed of.")]
     pub actor: String,
-    #[schemars(
-        description = "Limit for the number of posts to fetch.",
-        default = "default_limit"
-    )]
-    pub limit: u8,
+    #[schemars(description = "Limit for the number of posts to fetch.")]
+    pub limit: Option<u8>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct GetPostThreadParams {
     #[schemars(description = "Reference (AT-URI) to post record.")]
     pub uri: String,
-    #[schemars(
-        description = "How many levels of reply depth should be included in response.",
-        default = "default_depth"
-    )]
-    pub depth: u16,
-    #[schemars(
-        description = "How many levels of parent (and grandparent, etc) post to include.",
-        default = "default_parent_height"
-    )]
-    pub parent_height: u16,
-}
-
-fn default_depth() -> u8 {
-    1
-}
-
-fn default_parent_height() -> u8 {
-    10
+    #[schemars(description = "How many levels of reply depth should be included in response.")]
+    pub depth: Option<u16>,
+    #[schemars(description = "How many levels of parent (and grandparent, etc) post to include.")]
+    pub parent_height: Option<u16>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -70,17 +57,10 @@ impl fmt::Display for ReasonEnum {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct ListNotificationsParams {
-    #[schemars(
-        description = "Limit for the number of notifications to fetch.",
-        default = "default_limit"
-    )]
-    pub limit: u8,
+    #[schemars(description = "Limit for the number of notifications to fetch.")]
+    pub limit: Option<u8>,
     #[schemars(description = "Notification reasons to include in response.")]
     pub reasons: Vec<ReasonEnum>,
-}
-
-pub fn default_limit() -> u8 {
-    10
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
