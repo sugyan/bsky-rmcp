@@ -324,7 +324,7 @@ impl BskyService {
         Ok(output.data.notifications)
     }
     #[tool(
-        description = "Create a regular or reply post. Use `text` for content. Set `reply` to a post URI if replying, or to '' for a regular post."
+        description = "Create a regular or reply post. Use `text` for content. Set `reply` to a post URI if replying."
     )]
     async fn create_post(
         &self,
@@ -338,10 +338,8 @@ impl BskyService {
                     Some(Value::String(e.to_string())),
                 )
             })?;
-        let reply = if params.reply.is_empty() {
-            None
-        } else {
-            let output = get_post(&self.agent, &params.reply).await.map_err(|e| {
+        let reply = if let Some(reply) = &params.reply {
+            let output = get_post(&self.agent, reply).await.map_err(|e| {
                 Error::internal_error("failed to get post", Some(Value::String(e.to_string())))
             })?;
             let strong_ref =
@@ -371,6 +369,8 @@ impl BskyService {
                 }
                 .into(),
             )
+        } else {
+            None
         };
         let post = self
             .agent

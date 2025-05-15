@@ -87,9 +87,6 @@ pub fn default_limit() -> u8 {
 pub struct CreatePostParams {
     #[schemars(description = "Text content of the post.")]
     pub text: String,
-    #[schemars(
-        description = "Optional URI of the post being replied to. Use an empty string ('') if not replying.",
-        default = "String::new"
-    )]
-    pub reply: String,
+    #[schemars(description = "Optional URI of the post being replied to.")]
+    pub reply: Option<String>,
 }
