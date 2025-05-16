@@ -65,7 +65,10 @@ pub struct ListNotificationsParams {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct CreatePostParams {
-    #[schemars(description = "Text content of the post.", length(max = 300))]
+    #[schemars(
+        description = "Text content of the post. Max length is 300 characters.",
+        length(max = 300)
+    )]
     pub text: String,
     #[schemars(description = "Optional URI of the post being replied to.")]
     pub reply: Option<String>,
