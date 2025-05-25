@@ -12,6 +12,8 @@ pub struct GetAuthorFeedParams {
     pub actor: String,
     #[schemars(description = "Limit for the number of posts to fetch.")]
     pub limit: Option<u8>,
+    #[schemars(description = "Whether to include replies in the feed.")]
+    pub with_replies: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

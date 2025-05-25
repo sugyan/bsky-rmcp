@@ -89,6 +89,11 @@ impl BskyService {
         let actor = params.actor.parse().map_err(|e: &str| {
             Error::internal_error("failed to parse actor", Some(Value::String(e.into())))
         })?;
+        let filter = if params.with_replies.unwrap_or_default() {
+            None
+        } else {
+            Some("posts_no_replies".into())
+        };
         let limit = Some(
             params
                 .limit
@@ -108,7 +113,7 @@ impl BskyService {
                 bsky::feed::get_author_feed::ParametersData {
                     actor,
                     cursor: None,
-                    filter: None,
+                    filter,
                     include_pins: None,
                     limit,
                 }
