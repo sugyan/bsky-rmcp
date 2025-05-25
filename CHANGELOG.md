@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.12](https://github.com/sugyan/bsky-rmcp/compare/v0.0.11...v0.0.12) - 2025-05-25
+- feat: Add 'with_replies' parameter to GetAuthorFeedParams by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/20
+- feat: Add `search_posts` tool for post search functionality by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/22
+
 ## [v0.0.11](https://github.com/sugyan/bsky-rmcp/compare/v0.0.10...v0.0.11) - 2025-05-16
 - fix: add length constraint to post text description in CreatePostParams by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/18
 
