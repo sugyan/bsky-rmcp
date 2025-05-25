@@ -1,7 +1,7 @@
 use crate::{
     types::{
         CreatePostParams, DEFAULT_DEPTH, DEFAULT_LIMIT, DEFAULT_PARENT_HEIGHT, GetAuthorFeedParams,
-        GetPostThreadParams, ListNotificationsParams, ReasonEnum,
+        GetPostThreadParams, ListNotificationsParams, ReasonEnum, SearchPostsParams,
     },
     utils::{convert_datetime, get_post},
 };
@@ -181,6 +181,56 @@ impl BskyService {
             })?;
         Ok(CallToolResult::success(vec![Content::json(
             convert_datetime(output.data).map_err(|e| {
+                Error::internal_error(
+                    "failed to convert datetime",
+                    Some(Value::String(e.to_string())),
+                )
+            })?,
+        )?]))
+    }
+    #[tool(description = "Find posts matching search criteria, returning views of those posts.")]
+    async fn search_posts(
+        &self,
+        #[tool(aggr)] params: SearchPostsParams,
+    ) -> Result<CallToolResult, Error> {
+        let limit = Some(
+            params
+                .limit
+                .unwrap_or(DEFAULT_LIMIT)
+                .try_into()
+                .map_err(|e| {
+                    Error::internal_error("failed to parse limit", Some(Value::String(e)))
+                })?,
+        );
+        let output = self
+            .agent
+            .api
+            .app
+            .bsky
+            .feed
+            .search_posts(
+                bsky::feed::search_posts::ParametersData {
+                    author: None,
+                    cursor: None,
+                    domain: None,
+                    lang: None,
+                    limit,
+                    mentions: None,
+                    q: params.q,
+                    since: None,
+                    sort: None,
+                    tag: None,
+                    until: None,
+                    url: None,
+                }
+                .into(),
+            )
+            .await
+            .map_err(|e| {
+                Error::internal_error("failed to search posts", Some(Value::String(e.to_string())))
+            })?;
+        Ok(CallToolResult::success(vec![Content::json(
+            convert_datetime(output.data.posts).map_err(|e| {
                 Error::internal_error(
                     "failed to convert datetime",
                     Some(Value::String(e.to_string())),

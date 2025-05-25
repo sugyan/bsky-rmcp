@@ -27,6 +27,16 @@ pub struct GetPostThreadParams {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct SearchPostsParams {
+    #[schemars(
+        description = "Search query string; syntax, phrase, boolean, and faceting is unspecified, but Lucene query syntax is recommended."
+    )]
+    pub q: String,
+    #[schemars(description = "Limit for the number of posts to fetch.")]
+    pub limit: Option<u8>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "kebab-case")]
 pub enum ReasonEnum {
     Like,
