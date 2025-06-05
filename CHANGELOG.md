@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.13](https://github.com/sugyan/bsky-rmcp/compare/v0.0.12...v0.0.13) - 2025-06-05
+- docs: add CLAUDE.md with development guidance by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/24
+
 ## [v0.0.12](https://github.com/sugyan/bsky-rmcp/compare/v0.0.11...v0.0.12) - 2025-05-25
 - feat: Add 'with_replies' parameter to GetAuthorFeedParams by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/20
 - feat: Add `search_posts` tool for post search functionality by @sugyan in https://github.com/sugyan/bsky-rmcp/pull/22
